@@ -1,3 +1,5 @@
+# symfony-apiplatform-and-test
+
 ### Technical requirements
 
 * Install PHP **7.3** or **7.4** and these PHP extensions (which are installed and enabled by default in most PHP 7 installations): [Ctype](https://www.php.net/book.ctype), [iconv](https://www.php.net/book.iconv), [JSON](https://www.php.net/book.json), [PCRE](https://www.php.net/book.pcre), [Session](https://www.php.net/book.session), [SimpleXML](https://www.php.net/book.simplexml), and [Tokenizer](https://www.php.net/book.tokenizer);
@@ -51,4 +53,4 @@ for test:
 php bin/console doctrine:schema:update --force --no-interaction  --env=test 
 php bin/console doctrine:fixtures:load --env=test
 php ./vendor/bin/phpunit  
-```# symfony-apiplatform-and-test
+```
