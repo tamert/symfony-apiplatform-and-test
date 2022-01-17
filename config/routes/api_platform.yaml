@@ -1,0 +1,14 @@
+api_platform:
+    resource: .
+    type: api_platform
+    prefix: /api
+
+authentication_token:
+    path: /authentication_token
+    methods: ['POST']
+
+refresh_token:
+    path: /refresh_token
+    methods: POST
+    defaults:
+        _controller: gesdinet.jwtrefreshtoken:refresh

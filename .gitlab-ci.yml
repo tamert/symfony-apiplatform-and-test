@@ -1,0 +1,98 @@
+before_script:
+  - echo "memory_limit = -1" > /usr/local/etc/php/conf.d/memory.ini
+  - eval $(ssh-agent -s)
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - echo $SSH_PRIVATE_KEY > ~/.ssh/id_rsa
+  - echo $SSH_PUBLIC_KEY > ~/.ssh/id_rsa.pub
+  - ssh-keyscan gitlab.90pixel.net >> ~/.ssh/known_hosts
+  - chmod 644 ~/.ssh/known_hosts
+  - chmod 400 ~/.ssh/id_rsa
+  - chmod 400 ~/.ssh/id_rsa.pub
+  - mkdir -p /tmp/symfony
+  - mkdir -p /tmp/cache/composer
+  - chmod -R 777 /tmp
+
+
+stages:
+  - preparation
+  - phpunit
+  - deploy
+
+variables:
+  MYSQL_ROOT_PASSWORD: root
+  MYSQL_USER: mysql_user
+  MYSQL_PASSWORD: mysql_password
+  MYSQL_DATABASE: mysql_db
+  DB_HOST: mysql
+
+
+phpunit:
+  stage: phpunit
+  services:
+    - name: mysql:5.7
+      command: ["--default-authentication-plugin=mysql_native_password"]
+  dependencies:
+    - composer
+  script:
+    - php bin/console d:d:d --force --env=test
+    - php bin/console d:d:c --env=test
+    - php bin/console d:s:u --force --env=test
+    - mkdir -p config/jwt
+    - openssl genrsa -passout pass:de5816d611e28cb0eb1f7664af0ef04b -out config/jwt/private.pem -aes256 4096
+    - openssl rsa -pubout -in config/jwt/private.pem -passin pass:de5816d611e28cb0eb1f7664af0ef04b -out config/jwt/public.pem
+    - chmod 644 config/jwt/private.pem
+    - php bin/console doctrine:fixtures:load --env=test -n
+    - php ./vendor/bin/phpunit
+  artifacts:
+    paths:
+      - ./var/log
+    expire_in: 1 days
+    when: on_failure
+  only:
+    - test
+  tags:
+    - test
+
+cache:
+  paths:
+    - /tmp/cache/composer
+    - ./vendor
+
+composer:
+  stage: preparation
+  script:
+    - composer clear-cache
+    - composer install --optimize-autoloader
+    - composer dump-autoload --optimize --classmap-authoritative
+  artifacts:
+    paths:
+      - vendor/
+    expire_in: 1 days
+    when: always
+  cache:
+    paths:
+      - vendor/
+  only:
+    - test
+  tags:
+    - build
+
+deploy_test:
+  stage: deploy
+  dependencies:
+    - composer
+  script:
+    - vendor/bin/dep deploy teststage
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - ./
+  environment:
+    name: production
+    url: https://website
+  only:
+    - test
+  tags:
+    - deploy
